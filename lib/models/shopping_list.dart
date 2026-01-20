@@ -24,7 +24,7 @@ class ShoppingListModel {
     id: map['id'] as String,
     title: map['title'] as String,
     createdAt: DateTime.parse(map['createdAt'] as String),
-    items: (map['items'] as List? ?? [])
+    items: (map['items'] as List)
         .map((e) => ShoppingItem.fromMap(Map<String, dynamic>.from(e)))
         .toList(),
   );

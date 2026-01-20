@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'storage/hive_init.dart';
 import 'screens/lists_screen.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await HiveInit.init();
+  await NotificationService.instance.init();
+
   runApp(const SmartShoppingApp());
 }
 

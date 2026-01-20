@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-
-import '../models/shopping_list.dart';
 import '../storage/keys.dart';
+import '../models/shopping_list.dart';
 import 'list_detail_screen.dart';
 
 class ListsScreen extends StatefulWidget {
@@ -17,12 +16,10 @@ class _ListsScreenState extends State<ListsScreen> {
 
   List<ShoppingListModel> _loadLists() {
     final raw = _box.values.toList();
-    final lists =
-        raw
-            .map((e) => ShoppingListModel.fromMap(Map<String, dynamic>.from(e)))
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return lists;
+    return raw
+        .map((e) => ShoppingListModel.fromMap(Map<String, dynamic>.from(e)))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   Future<void> _createList() async {

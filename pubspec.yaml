@@ -10,7 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-   # Storage
+  # Qr code generation
+  qr_flutter: ^4.1.0
+
+  # Storage
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
@@ -22,6 +25,10 @@ dependencies:
 
   # To show notifications
   flutter_local_notifications: ^17.2.2
+
+  # Analytics
+  firebase_core: ^3.6.0
+  firebase_analytics: ^11.3.0
 
 dev_dependencies:
   flutter_test:
