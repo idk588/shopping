@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'storage/hive_init.dart';
+import 'screens/lists_screen.dart';
 
-void main() {
-  runApp(const MainApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await HiveInit.init();
+  runApp(const SmartShoppingApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class SmartShoppingApp extends StatelessWidget {
+  const SmartShoppingApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
+    return MaterialApp(
+      title: 'Smart Shopping Scanner',
+      theme: ThemeData(useMaterial3: true),
+      home: const ListsScreen(),
     );
   }
 }
