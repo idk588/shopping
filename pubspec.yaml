@@ -10,6 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
 
+   # Storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Barcode scanning
+  mobile_scanner: ^5.2.3
+
+  # Sensor beyond GPS/Camera
+  battery_plus: ^6.0.1
+
+  # To show notifications
+  flutter_local_notifications: ^17.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
