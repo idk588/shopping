@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:battery_plus/battery_plus.dart';
+
 import '../services/notification_service.dart';
 import '../services/analytics_service.dart';
 
@@ -21,6 +22,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     AnalyticsService.instance.logOpenDeviceStatus();
     _refresh();
     _battery.onBatteryStateChanged.listen((s) {
+      if (!mounted) return;
       setState(() => _state = s);
     });
   }
@@ -28,49 +30,99 @@ class _DeviceScreenState extends State<DeviceScreen> {
   Future<void> _refresh() async {
     final lvl = await _battery.batteryLevel;
     final st = await _battery.batteryState;
+    if (!mounted) return;
     setState(() {
       _level = lvl;
       _state = st;
     });
   }
 
-  Future<void> _ensurePermission() async {
+  Future<bool> _ensurePermissionWithUi() async {
+    final messenger = ScaffoldMessenger.of(context);
+
     final ok = await NotificationService.instance.requestPermissionIfNeeded();
-    if (!mounted) return;
+    if (!mounted) return false;
 
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Notification permission not granted.')),
       );
     }
+    return ok;
   }
 
   @override
   Widget build(BuildContext context) {
-    final levelText = _level == null ? 'Loading…' : '$_level%';
+    final cs = Theme.of(context).colorScheme;
+
+    final level = _level;
+    final levelText = level == null ? 'Loading…' : '$level%';
     final stateText = _state?.toString().split('.').last ?? 'Loading…';
+    final progress = level == null ? null : (level.clamp(0, 100) / 100.0);
+
+    IconData stateIcon;
+    switch (_state) {
+      case BatteryState.charging:
+        stateIcon = Icons.bolt;
+        break;
+      case BatteryState.full:
+        stateIcon = Icons.battery_full;
+        break;
+      case BatteryState.discharging:
+        stateIcon = Icons.battery_5_bar;
+        break;
+      default:
+        stateIcon = Icons.battery_unknown;
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Device Status')),
+      appBar: AppBar(
+        title: const Text('Device Status'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh battery info',
+            onPressed: _refresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
             Card(
-              child: ListTile(
-                title: const Text('Battery Level'),
-                subtitle: Text(levelText),
-                trailing: IconButton(
-                  tooltip: 'Refresh',
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.battery_std, color: cs.primary),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Battery',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        Text(levelText),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (progress == null)
+                      const LinearProgressIndicator()
+                    else
+                      LinearProgressIndicator(value: progress),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(stateIcon, color: cs.primary),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text('State: $stateText')),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                title: const Text('Battery State'),
-                subtitle: Text(stateText),
               ),
             ),
             const SizedBox(height: 16),
@@ -85,12 +137,13 @@ class _DeviceScreenState extends State<DeviceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ElevatedButton(
+                    FilledButton.icon(
                       onPressed: () async {
                         final messenger = ScaffoldMessenger.of(context);
 
-                        await _ensurePermission();
+                        final ok = await _ensurePermissionWithUi();
                         if (!mounted) return;
+                        if (!ok) return;
 
                         await NotificationService.instance.showTestNow();
                         if (!mounted) return;
@@ -101,15 +154,17 @@ class _DeviceScreenState extends State<DeviceScreen> {
                           ),
                         );
                       },
-                      child: const Text('Send test notification now'),
+                      icon: const Icon(Icons.notifications_active),
+                      label: const Text('Send test notification now'),
                     ),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
                       onPressed: () async {
                         final messenger = ScaffoldMessenger.of(context);
 
-                        await _ensurePermission();
+                        final ok = await _ensurePermissionWithUi();
                         if (!mounted) return;
+                        if (!ok) return;
 
                         await NotificationService.instance
                             .startEveryMinuteReminder();
@@ -121,15 +176,13 @@ class _DeviceScreenState extends State<DeviceScreen> {
                           ),
                         );
                       },
-                      child: const Text('Start every-minute reminder (demo)'),
+                      icon: const Icon(Icons.schedule),
+                      label: const Text('Start every-minute reminder (demo)'),
                     ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
+                    const SizedBox(height: 10),
+                    TextButton.icon(
                       onPressed: () async {
                         final messenger = ScaffoldMessenger.of(context);
-
-                        await _ensurePermission();
-                        if (!mounted) return;
 
                         await NotificationService.instance.cancelAll();
                         if (!mounted) return;
@@ -140,7 +193,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
                           ),
                         );
                       },
-                      child: const Text('Cancel all notifications'),
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Cancel all notifications'),
                     ),
                   ],
                 ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../services/analytics_service.dart';
 
 import '../storage/keys.dart';
 import '../models/shopping_list.dart';
+import '../ui/ui.dart';
 import 'list_detail_screen.dart';
 
 class ListsScreen extends StatefulWidget {
@@ -16,8 +16,19 @@ class ListsScreen extends StatefulWidget {
 class _ListsScreenState extends State<ListsScreen> {
   Box get _box => Hive.box(HiveKeys.listsBox);
 
+  List<ShoppingListModel> _listsFromBox(Box box) {
+    final raw = box.values.toList();
+    final lists =
+        raw
+            .map((e) => ShoppingListModel.fromMap(Map<String, dynamic>.from(e)))
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return lists;
+  }
+
   Future<void> _createList() async {
     final controller = TextEditingController();
+
     final title = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
@@ -25,13 +36,14 @@ class _ListsScreenState extends State<ListsScreen> {
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(labelText: 'List name'),
+          textInputAction: TextInputAction.done,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('Create'),
           ),
@@ -50,73 +62,97 @@ class _ListsScreenState extends State<ListsScreen> {
       items: [],
     );
 
-    // No setState needed: ValueListenableBuilder will rebuild when the box changes
     await _box.put(id, list.toMap());
-    await AnalyticsService.instance.logCreateList();
   }
 
   Future<void> _deleteList(String id) async {
-    // No setState needed: ValueListenableBuilder will rebuild when the box changes
     await _box.delete(id);
-  }
-
-  List<ShoppingListModel> _listsFromBox(Box box) {
-    final raw = box.values.toList();
-    final lists =
-        raw
-            .map((e) => ShoppingListModel.fromMap(Map<String, dynamic>.from(e)))
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return lists;
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Shopping Lists')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _createList,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New list'),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: _box.listenable(),
-        builder: (context, Box box, _) {
-          final lists = _listsFromBox(box);
+      body: Padding(
+        padding: Ui.screenPadding,
+        child: ValueListenableBuilder(
+          valueListenable: _box.listenable(),
+          builder: (context, Box box, _) {
+            final lists = _listsFromBox(box);
 
-          if (lists.isEmpty) {
-            return const Center(
-              child: Text('No lists yet. Tap + to create one.'),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: lists.length,
-            itemBuilder: (_, i) {
-              final l = lists[i];
-              final total = l.items.length;
-              final bought = l.items.where((x) => x.bought).length;
-
-              return ListTile(
-                title: Text(l.title),
-                subtitle: Text('$bought / $total bought'),
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ListDetailScreen(listId: l.id),
+            if (lists.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.list_alt, size: 52, color: cs.primary),
+                    Ui.gap12,
+                    Text(
+                      'No lists yet',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  );
-                  // No setState needed: detail screen updates Hive; listener will rebuild when you return
-                },
-                trailing: IconButton(
-                  tooltip: 'Delete list',
-                  onPressed: () => _deleteList(l.id),
-                  icon: const Icon(Icons.delete_outline),
+                    Ui.gap8,
+                    Text(
+                      'Tap “New list” to create your first one.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
               );
-            },
-          );
-        },
+            }
+
+            return ListView.separated(
+              itemCount: lists.length,
+              separatorBuilder: (_, __) => Ui.gap12,
+              itemBuilder: (_, i) {
+                final l = lists[i];
+                final total = l.items.length;
+                final bought = l.items.where((x) => x.bought).length;
+
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    title: Text(
+                      l.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    subtitle: Text('$bought / $total bought'),
+                    leading: CircleAvatar(
+                      backgroundColor: cs.primary.withOpacity(0.12),
+                      foregroundColor: cs.primary,
+                      child: const Icon(Icons.shopping_bag_outlined),
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Delete list',
+                      onPressed: () => _deleteList(l.id),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ListDetailScreen(listId: l.id),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

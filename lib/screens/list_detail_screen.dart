@@ -4,7 +4,6 @@ import 'package:hive/hive.dart';
 import '../models/shopping_item.dart';
 import '../models/shopping_list.dart';
 import '../storage/keys.dart';
-
 import '../services/analytics_service.dart';
 
 import 'scan_screen.dart';
@@ -64,7 +63,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               final name = nameController.text.trim();
               final qty = int.tryParse(qtyController.text.trim()) ?? 1;
@@ -76,23 +75,25 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       ),
     );
 
+    if (!mounted) return;
     if (result == null) return;
 
-    final name = (result['name'] as String).trim();
-    final qty = result['qty'] as int;
+    final name = (result['name'] as String?)?.trim() ?? '';
+    final qty = (result['qty'] as int?) ?? 1;
 
     if (name.isEmpty) return;
 
-    list.items.add(
-      ShoppingItem(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: name,
-        quantity: qty,
-      ),
+    final item = ShoppingItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: name,
+      quantity: qty < 1 ? 1 : qty,
+      bought: false,
     );
 
+    list.items.add(item);
     await _save(list);
     await AnalyticsService.instance.logAddItem();
+
     if (!mounted) return;
     setState(() {});
   }
@@ -100,6 +101,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   Future<void> _toggleBought(ShoppingListModel list, ShoppingItem item) async {
     item.bought = !item.bought;
     await _save(list);
+
     if (!mounted) return;
     setState(() {});
   }
@@ -107,6 +109,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   Future<void> _deleteItem(ShoppingListModel list, ShoppingItem item) async {
     list.items.removeWhere((x) => x.id == item.id);
     await _save(list);
+
     if (!mounted) return;
     setState(() {});
   }
@@ -117,7 +120,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final qty = await showDialog<int>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Edit quantity: ${item.name}'),
+        title: Text('Quantity for "${item.name}"'),
         content: TextField(
           controller: qtyController,
           keyboardType: TextInputType.number,
@@ -128,7 +131,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () {
               final parsed = int.tryParse(qtyController.text.trim());
               Navigator.pop(
@@ -142,15 +145,19 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       ),
     );
 
+    if (!mounted) return;
     if (qty == null) return;
 
     item.quantity = qty;
     await _save(list);
+
     if (!mounted) return;
     setState(() {});
   }
 
   Future<void> _openScannerToMark(ShoppingListModel list) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     final scanned = await Navigator.push<String?>(
       context,
       MaterialPageRoute(
@@ -164,10 +171,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     // Expected QR format: SSS|<listId>|<itemId>
     final parts = scanned.split('|');
     if (parts.length != 3 || parts[0] != 'SSS') {
-      if (!mounted) return;
       await AnalyticsService.instance.logScanInvalid();
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Invalid QR code (not from this app).')),
       );
       return;
@@ -177,8 +184,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final scannedItemId = parts[2];
 
     if (scannedListId != list.id) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('This QR belongs to a different list.')),
       );
       return;
@@ -186,8 +192,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
     final match = list.items.where((it) => it.id == scannedItemId).toList();
     if (match.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Item not found in this list.')),
       );
       return;
@@ -196,7 +201,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final item = match.first;
 
     if (item.bought) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('"${item.name}" is already marked as bought.')),
       );
       return;
@@ -209,14 +214,14 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     if (!mounted) return;
 
     setState(() {});
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Marked "${item.name}" as bought.')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('Marked "${item.name}" as bought.')),
+    );
 
     final allBought =
         list.items.isNotEmpty && list.items.every((x) => x.bought);
     if (allBought) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('List completed. All items bought!')),
       );
     }
@@ -240,6 +245,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final list = _load();
 
     final total = list.items.length;
@@ -248,7 +254,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(list.title),
+        title: Text(list.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
             tooltip: 'Device status',
@@ -285,37 +291,87 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         tooltip: 'Add item',
         onPressed: () => _addItem(list),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Add item'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Progress: $boughtCount / $total',
-              style: Theme.of(context).textTheme.titleMedium,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.checklist, color: cs.primary),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Progress',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        Text('$boughtCount / $total'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: progress),
+                    const SizedBox(height: 8),
+                    Text(
+                      total == 0
+                          ? 'Add items to start tracking.'
+                          : (boughtCount == total
+                                ? 'All items bought 🎉'
+                                : 'Keep going!'),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(
               child: total == 0
-                  ? const Center(
-                      child: Text('No items yet. Tap + to add items.'),
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.playlist_add, size: 52, color: cs.primary),
+                          const SizedBox(height: 10),
+                          Text(
+                            'No items yet',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 6),
+                          const Text('Tap “Add item” to add your first item.'),
+                        ],
+                      ),
                     )
-                  : ListView.builder(
+                  : ListView.separated(
                       itemCount: list.items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (_, i) {
                         final item = list.items[i];
 
                         return Card(
                           child: ListTile(
-                            title: Text(item.name),
-                            subtitle: Text('Quantity: ${item.quantity}'),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            title: Text(
+                              item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            subtitle: Text('Qty: ${item.quantity}'),
                             leading: Checkbox(
                               value: item.bought,
                               onChanged: (_) => _toggleBought(list, item),
