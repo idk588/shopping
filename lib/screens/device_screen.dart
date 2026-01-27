@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:battery_plus/battery_plus.dart';
 import '../services/notification_service.dart';
+import '../services/analytics_service.dart';
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
@@ -17,6 +18,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.instance.logOpenDeviceStatus();
     _refresh();
     _battery.onBatteryStateChanged.listen((s) {
       setState(() => _state = s);

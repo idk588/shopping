@@ -5,6 +5,8 @@ import '../models/shopping_item.dart';
 import '../models/shopping_list.dart';
 import '../storage/keys.dart';
 
+import '../services/analytics_service.dart';
+
 import 'scan_screen.dart';
 import 'device_screen.dart';
 import 'item_qr_screen.dart';
@@ -90,6 +92,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     );
 
     await _save(list);
+    await AnalyticsService.instance.logAddItem();
     if (!mounted) return;
     setState(() {});
   }
@@ -162,6 +165,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final parts = scanned.split('|');
     if (parts.length != 3 || parts[0] != 'SSS') {
       if (!mounted) return;
+      await AnalyticsService.instance.logScanInvalid();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid QR code (not from this app).')),
       );
@@ -198,6 +203,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     }
 
     item.bought = true;
+    await AnalyticsService.instance.logScanSuccess();
+
     await _save(list);
     if (!mounted) return;
 

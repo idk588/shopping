@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../services/analytics_service.dart';
 
 class ItemQrScreen extends StatelessWidget {
   final String listId;
@@ -17,6 +18,7 @@ class ItemQrScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AnalyticsService.instance.logViewQr();
     final qrValue = 'SSS|$listId|$itemId';
 
     return Scaffold(
