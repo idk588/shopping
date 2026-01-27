@@ -155,6 +155,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       ),
     );
 
+    if (!mounted) return;
     if (scanned == null || scanned.isEmpty) return;
 
     // Expected QR format: SSS|<listId>|<itemId>

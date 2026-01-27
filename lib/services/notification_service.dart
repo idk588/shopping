@@ -77,7 +77,7 @@ class NotificationService {
       'Open your list and scan items to mark them bought.',
       RepeatInterval.everyMinute,
       _details(),
-      androidAllowWhileIdle: true,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 
