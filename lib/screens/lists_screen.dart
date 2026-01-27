@@ -130,7 +130,12 @@ class _ListsScreenState extends State<ListsScreen> {
                     ),
                     subtitle: Text('$bought / $total bought'),
                     leading: CircleAvatar(
-                      backgroundColor: cs.primary.withOpacity(0.12),
+                      backgroundColor: Color.fromARGB(
+                        (0.12 * 255).round(),
+                        cs.primary.r.toInt(),
+                        cs.primary.g.toInt(),
+                        cs.primary.b.toInt(),
+                      ),
                       foregroundColor: cs.primary,
                       child: const Icon(Icons.shopping_bag_outlined),
                     ),

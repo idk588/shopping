@@ -43,12 +43,17 @@ class _ItemQrScreenState extends State<ItemQrScreen> {
           IconButton(
             tooltip: 'Copy QR payload',
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(
+                context,
+              ); // capture before await
               await Clipboard.setData(ClipboardData(text: _qrValue));
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
+
+              messenger.showSnackBar(
                 const SnackBar(content: Text('QR value copied to clipboard.')),
               );
             },
+
             icon: const Icon(Icons.copy),
           ),
         ],
