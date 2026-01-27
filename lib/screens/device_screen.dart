@@ -85,10 +85,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+
                         await _ensurePermission();
+                        if (!mounted) return;
+
                         await NotificationService.instance.showTestNow();
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
+
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Test notification sent.'),
                           ),
@@ -99,11 +104,16 @@ class _DeviceScreenState extends State<DeviceScreen> {
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+
                         await _ensurePermission();
+                        if (!mounted) return;
+
                         await NotificationService.instance
                             .startEveryMinuteReminder();
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
+
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Every-minute reminder started.'),
                           ),
@@ -114,9 +124,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
                     const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+
+                        await _ensurePermission();
+                        if (!mounted) return;
+
                         await NotificationService.instance.cancelAll();
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
+
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('All notifications cancelled.'),
                           ),
